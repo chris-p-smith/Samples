@@ -1,5 +1,7 @@
 //---------------------------------------------------------------
-// Console I/O through the on board UART for MSP 430X4XXX
+// Code designed to output the result of a subtraction operation
+// when two 2-digit hexadecimal numbers are entered into the 
+// hyperterminal connected to the MSP430 microcontroller.
 //---------------------------------------------------------------
 
 
@@ -18,14 +20,26 @@ int NUMFIELD=7;
 int main(void){
 	volatile unsigned int a,b,c,d; // AB is the first number in hex code, CD is the second.
 	volatile unsigned int e, f, g, h; 	// e f g and h will hold the converted values of the input.
-	volatile unsigned int j, k, l;
+	volatile unsigned int j, k, l;      // J and K hold the final converted value of their input. L
 	volatile unsigned int s, t, u, v; //s will hold the MSB of the difference, t will hold the LSB
 	unsigned char equal, mult, nl, cr;
 	volatile unsigned int i;
 	int disp[16] = {0x5f, 0x06, 0x6b, 0x2f, 0x36, 0x3d, 0x7d, 0x07, 0x7f, 0x37, 0x77, 0x7c, 0x68, 0x6e, 0x79, 0x71};
-
+	//The display array hold all 16 hexadecimal values from 0 to F - converted so that the 8 segment
+	//display will display them properly.
+	// Display format
+ 	// 			 A A A
+	// 			E     B
+ 	// 		X 	E     B
+ 	// 			 F F F
+ 	// 		X	G     C
+ 	// 			G     C
+ 	// 		DP       D D D
+ 	// bit order
+ 	// dp, G, F, E, D, C, B, A
+	
 	WDTCTL = WDTPW + WDTHOLD;
-// Code will read two two-digit hexadecimal numbers from the hyperterminal then subtract the last from the first and display the result
+
 	Init_UART();
 	Init_LCD();
 
@@ -34,8 +48,12 @@ int main(void){
 	nl = 10;
 	cr = 13;
 for (;;){
-		a=INCHAR_UART();
-		OUTA_UART(a);
+		a=INCHAR_UART();		//First, we input the first 2-digit number
+		OUTA_UART(a);	
+						//Then, we must convert it to ASCII. 
+						//ASCII code is not in the same order as hexadecimal
+						//Numbers are 30h digits away from their actual value (0x0 = ASCII 0x30)
+						//Letters are 37h digits away (0xF = 15d = ASCII 0x46)
 		if (a<=0x39){			// is first character a number?
 			if (a>=0x30){
 				e=a-0x30;		// convert first character from ASCII to hex
@@ -45,7 +63,7 @@ for (;;){
 		else if (a<=0x46){		// is first character a capital letter?
 			if (a>=0x41){
 				e=a-0x37;		// convert from ASCII to hex
-				e*=16;			// rotate left by 4
+				e*=16;			// rotate left by 4 to next hex digit
 			}
 		}
 
@@ -92,17 +110,18 @@ for (;;){
 			}
 		}
 
-		k = g+h;		// same as above, character codes converted to actual number and added together
-		OUTA_UART(equal);	// this concludes the second character.
+		k = g+h;		// same as above, character codes converted to actual number and added together.
+		OUTA_UART(equal);	// this concludes the second character, output an equal sign before calculation.
 
-
-
-			l = j*k;		// the difference is calculated
-
-			s = 0xF000 & l;	// s is the masked 4 upper bits.
-			s /= 4086;		// to make it a character, you first have to bring it down to the 4 LSB.
-			LCDSeg[4] = disp[s];
-
+		if (k>j){ // the result is negative if the second is greater than the first
+			OUTA_UART(sub); // because it's negative, ouptut will need to reflect that.
+			LCDSeg[3] = 0x20; // same is done on the 8-seg
+			l = k-j;
+			s = 0xF0 & l;	// s is the masked 4 upper bits.
+			s /= 16;		// to make it a character, you first have to bring it down to the 4 LSB.
+			LCDSeg[2] = disp[s];	// the raw value reflects the portion of the array that we want
+			
+			// we must now reverse the ASCII to hex operation we did above. 
 			if (s<=9){
 				s+=0x30;
 			}
@@ -110,9 +129,9 @@ for (;;){
 				s+=0x37;
 			}
 
-			t = 0x0F00 & l;
-			t/= 256;
-			LCDSeg[3] = disp[t];
+			t = 0x0F & l;	//T is the masked lower 4 bits.
+			LCDSeg[1] = disp[t];
+			LCDSeg[0] = 0x74; //This corresponds to the letter 'h', denoting a hexadecimal value on the 8-seg
 
 			if (t<=9){
 				t+=0x30;
@@ -121,36 +140,37 @@ for (;;){
 				t+=0x37;
 			}
 
+			OUTA_UART(s);
+			OUTA_UART(t);
+		}
 
-			u = 0x0F0 & l;
-			u/= 16;
-			LCDSeg[2] = disp[u];
+		else if (j>k){
+			l = j-k;		// the difference is calculated
 
-			if (u<=9){
-				u+=0x30;
+			s = 0xF0 & l;	// s is the masked 4 upper bits.
+			s /= 16;		// to make it a character, you first have to bring it down to the 4 LSB.
+			LCDSeg[2] = disp[s];
+
+			if (s<=9){
+				s+=0x30;
 			}
-			else if (u>=0xA){
-				u+=0x37;
+			else if (s>=0xA){
+				s+=0x37;
 			}
 
-			v = 0x0F & l;
-			LCDSeg[1] = disp[v];
+			t = 0x0F & l;
+			LCDSeg[1] = disp[t];
 			LCDSeg[0] = 0x74;
 
-			if (v<=9){
-				v+=0x30;
+			if (t<=9){
+				t+=0x30;
 			}
-			else if (v>=0xA){
-				v+=0x37;
+			else if (t>=0xA){
+				t+=0x37;
 			}
 			OUTA_UART(s);
 			OUTA_UART(t);
-			OUTA_UART(u);
-			OUTA_UART(v);
-
-
-
-
+		}
 		OUTA_UART(nl);
 		OUTA_UART(cr);
 
@@ -158,6 +178,10 @@ for (;;){
 }
 void OUTA_UART(unsigned char A){
 //---------------------------------------------------------------
+//***************************************************************
+//From here on, code is borrowed from the lab manual provided.
+//This work is not written by me, but is given to allow expedient
+//teaching of the lab material.
 //***************************************************************
 //---------------------------------------------------------------
 // IFG2 register (1) = 1 transmit buffer is empty,
@@ -179,7 +203,7 @@ unsigned char INCHAR_UART(void){
 // wait for the receive buffer is full before getting the data
 do{
 }while ((IFG2&0x01)==0);
-// go get the char from the receive buffer
+// get the char from the receive buffer
 return (UCA0RXBUF);
 }
 void Init_UART(void){
@@ -234,34 +258,12 @@ IE2=0; // turn transmit interrupts off
 // Initialize the LCD system
 //---------------------------------------------------------------------
 void Init_LCD(void){
- // Using the LCD A controller for the MSP430fg4618
- // the pins of the LCD are memory mapped onto the mp430F4xxx
- // memory bus and
- // are accessed via LCDSeg[i] array
- // See page 260 of Davie's text
- // LCD_SIZE-4 only gives the 7 segment displays plus DP, and
- // (colons are the same bit setting)
- // LCD_SIZE-4 only gives the 7 segment displays plus DP, and
- // colons (colons / dp)
- // Right most seven segment display is at LCDSeg[0];
- // Display format
- // 			 A A A
- // 			E	  B
- // 		X 	E	  B
- // 			 F F F
- // 		X	G	  C
- // 			G	  C
- // 		DP   D D D
 
- // bit order
- // dp, G, F, E, D, C, B, A
 int n;
 for (n=0;n<LCD_SIZE;n++){
  // initialize the segment memory to zero to clear the LCD
  // writing a zero in the LCD memory location clears turns
- // off the LCD segment
- // Including all of the special characters
- // This way or
+ // off the LCD segment Including all of the special characters
  *(LCDSeg+n) = 0;
  // LCDSeg[n]=0;
  }
@@ -286,17 +288,6 @@ for (n=0;n<LCD_SIZE;n++){
  // the display segments
  // The ACLK has been set to 32768 Hz with the external
  // 327768 Hz crystal
- // Let's use scan frequency of 256 Hz (This is fast enough not
- // to see the display flicker)
- // or a divisor of 128
- // LCDFREQ division(3 bits), LCDMUX (2 bits), LCDSON segments on,
- // Not used, LCDON LCD module on
- // 011 = freq /128, 11 = 4 mux's needed since the display uses for
- // common inputs com0-com3
- // need to turn the LCD on LCDON = 1
- // LCDSON allows the segments to be blanked good for blinking but
- // needs to be on to
- // display the LCD segments LCDSON = 1
  // Bit pattern required = 0111 1101 = 0x7d
  // page 26-22 of MSP430x4xx user manual
  LCDACTL = 0x7d;
