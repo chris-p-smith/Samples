@@ -1,25 +1,23 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Company: <Name>
-//
-// File: div11.v
-// File history:
-//      <Revision number>: <Date>: <Comments>
-//      <Revision number>: <Date>: <Comments>
-//      <Revision number>: <Date>: <Comments>
-//
-// Description: 
-//
-// <Description here>
-//
-// Targeted device: <Family::ProASIC3L> <Die::A3P1000L> <Package::144 FBGA>
-// Author: <Name>
-//
-/////////////////////////////////////////////////////////////////////////////////////////////////// 
+// Circuit consists of 5 edge-triggered flip flops, numbered 0 through 4. 
+// 
+//Vcc---|
+//      |        Q0         Q1         Q2        Q3
+//      |_>[   ]---|  [   ]---|  [   ]---|  [   ]--->{}
+//         [FF0]   |  [FF1]   |  [FF2]   |  [FF3]
+//CLK----->[___]   |->[___]   |->[___]   |->[___]
+//           o    {}    o    {}    o    {}    o   {~Q0&Q1&Q2&~Q3 = W1}
+//           |__________|__________|__________|_________
+//                                                      |
+//                                 {Q4||W1}->[   ]->Q4  |
+//                                           [FF4]      |
+//                                  CLK----->[   ]------|->CLK_BY_11       
+//                                             o
+//                                     RST-----|
 
 `timescale 1us / 1ns
 
 module div11(q0,q1,q2,q3,q4,clk,rst,clk_by_11);
-input clk,rst;
+input clk,rst; 
 output clk_by_11,q0,q1,q2,q3,q4;
 reg q0,q1,q2,q3,q4;
 wire w1,w2;  
