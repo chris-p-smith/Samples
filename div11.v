@@ -1,4 +1,4 @@
-// Circuit consists of 5 edge-triggered flip flops, numbered 0 through 4. 
+// Circuit consists of 5 edge-triggered flip flops, numbered 0 through 4.  
 // 
 //Vcc---|
 //      |        Q0         Q1         Q2        Q3
